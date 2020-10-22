@@ -4,6 +4,7 @@ import json
 import logging
 import serial.tools.list_ports
 import serial
+import time
 from serial.serialutil import SerialException
 
 logger = logging.getLogger(__name__)
@@ -34,11 +35,11 @@ def dump_port_info(port):
     pass
 
 BOARDS = {
-    (6790,29987):("AMZN/Gikfun","Nano Clone"), # http://amzn.to/2vbf0Qo
+    (6790,29987):("AMZN/Gikfun","Nano Clone"), # http://amzn.to/2vbf0Qo, also SparkFun Artemis
     (9025,32822):("AMZN/KOOKYE","Pro Micro/Leonardo Clone"), # http://amzn.to/2tk9eyE
     (1027,24597):("SparkFun","RedBoard"), # http://amzn.to/2uBO3It / https://www.sparkfun.com/products/13975
     # (9025,32822):("eBay","Leonardo USB dongle"), # duplicate of a previous entry
-    # (?,?):("SparkFun","Artemis"), # https://www.sparkfun.com/artemis
+    # (6790,?):("SparkFun","Artemis"), # https://www.sparkfun.com/artemis
 }
 
 def get_arduino_info(p):
@@ -119,20 +120,19 @@ class Arduino(object):
         if self.serial_connection:
             self.serial_connection.reset_output_buffer()
 
-    def stream_to_file(self, filename, append=False, batch_size=100, timeout=0, stream_timeout=60, data_size=2):
+    def stream_to_file(self, filename, append=False, batch_size=100, stream_timeout=60, data_size=2):
         mode = "ab" if append else "wb"
         read_size = batch_size*data_size
         with open(filename, mode) as f:
             self.reset_input_buffer()
-            end_time = time.time() + stream_timeout
-            f.write(bts())
+            start_time = time.time()
             try:
                 while True:
-                    f.write(self.read(read_size, timeout=timeout))
-                    if time.time() > end_time:
+                    f.write(self.read(read_size))
+                    if stream_timeout >= 0 and time.time() > start_time+stream_timeout:
                         break
             finally:
-                f.write(bts())
+                pass
 
     def read(self, *args, **kwargs):
         '''
